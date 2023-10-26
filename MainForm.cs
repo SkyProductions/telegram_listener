@@ -1,4 +1,6 @@
 ﻿using Microsoft.VisualBasic;
+using NetMQ;
+using NetMQ.Sockets;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -11,16 +13,19 @@ namespace WTelegramClientTestWF
 	public partial class MainForm : Form
 	{
 		private WTelegram.Client _client;
-
-		public MainForm()
+		private RequestSocket _clientSocket;
+        public MainForm()
 		{
 			InitializeComponent();
 			WTelegram.Helpers.Log = (l, s) => Debug.WriteLine(s);
-		}
+			_clientSocket = new RequestSocket(">tcp://localhost:5556");
+
+        }
 
 		private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
 		{
-			_client?.Dispose();
+            _clientSocket.Dispose();
+            _client?.Dispose();
 			Properties.Settings.Default.Save();
 		}
 
@@ -87,14 +92,15 @@ namespace WTelegramClientTestWF
 					{
                         String _content = string.Empty;
                         UpdateNewChannelMessage msg = item as UpdateNewChannelMessage;
-						if(msg.message.Peer is PeerChannel)
+						if (msg.message.Peer is PeerChannel)
 						{
-                            PeerChannel channel = msg.message.Peer as PeerChannel;
-                            _content += $"{channel.channel_id} {channel}:";
+							PeerChannel channel = msg.message.Peer as PeerChannel;
+							_content += $"{channel.channel_id} {channel}:";
+							// Send a message from the client socket
+							_clientSocket.SendFrame("Hello");
+							_content += msg.message.ToString();
+							listBox.Items.Add(_content);
 						}
-                        _content += msg.message.ToString();
-
-                        listBox.Items.Add(_content);
                     }
                 }
 			}
